@@ -1,0 +1,215 @@
+
+hashfunction H;
+function XOR;
+
+protocol DisasterCOM(UD, CN, UAV)
+{
+
+//==================================================
+// USER DEVICE
+//==================================================
+
+role UD
+{
+    const IDu, Biou, Betau, Rhou : Nonce;
+    const TIDu : Nonce;
+
+    const x1, x2 : Nonce;
+    const STu : Nonce;
+
+    // Step 1
+
+    macro A1 = H(IDu,STu);
+
+    macro A2 = XOR(A1,(x1,x2));
+
+    macro A3 = H(x1,Betau,Rhou,x2,IDu,Biou);
+
+    macro Sign1 =
+        H(Betau,x1,Rhou,Biou,x2,STu);
+
+    send_1(UD,CN,
+        (TIDu,A2,A3,Sign1,STu));
+
+    // Final authentication
+
+    read_4(CN,UD,
+        H(TIDu,STu,Rhou));
+
+    claim_UD1(UD,Secret,x1);
+    claim_UD2(UD,Secret,x2);
+    claim_UD3(UD,Niagree);
+    claim_UD4(UD,Nisynch);
+    claim_UD5(UD,Alive);
+}
+
+
+
+//==================================================
+// CONTROLLING NODE
+//==================================================
+
+role CN
+{
+    const IDu,Biou,Betau,Rhou : Nonce;
+    const TIDu : Nonce;
+
+    const TIDuav : Nonce;
+    const Cuav : Nonce;
+    const Ruav : Nonce;
+
+    const Pubi,Pri : Nonce;
+
+    const STca : Nonce;
+
+    var STu : Nonce;
+    var x1,x2 : Nonce;
+
+    // Receive M1
+
+    macro A1CN = H(IDu,STu);
+
+    macro A2CN = XOR(A1CN,(x1,x2));
+
+    macro A3CN =
+        H(x1,Betau,Rhou,x2,IDu,Biou);
+
+    macro Sign1CN =
+        H(Betau,x1,Rhou,Biou,x2,STu);
+
+    read_1(UD,CN,
+        (TIDu,A2CN,A3CN,Sign1CN,STu));
+
+
+
+    // M2 to UAV
+
+    macro Sign2 =
+        H(TIDuav,Pri,STca,Cuav);
+
+    send_2(CN,UAV,
+        (Cuav,Pubi,STca,Sign2));
+
+
+
+    // Receive M3
+
+    var STuav : Nonce;
+    var x3,x4 : Nonce;
+    var Datai : Nonce;
+
+    macro U1CN=
+        XOR(Ruav,((x3,STuav),x4));
+
+    macro U2CN =
+        XOR(x3,
+            XOR((Ruav,Cuav),x4));
+
+    macro U3CN =
+        H(TIDuav,STuav,Pri,x3,Datai);
+
+    macro Sign3CN =
+        H(Cuav,Ruav,Ruav,
+          TIDuav,
+          STuav,
+          Pubi,
+          x3);
+
+    read_3(UAV,CN,
+        (U1CN,U2CN,U3CN,
+         Sign3CN,TIDuav,STuav));
+
+
+
+    // Final confirmations
+
+    send_4(CN,UD,
+        H(TIDu,STu,Rhou));
+
+    send_5(CN,UAV,
+        H(TIDuav,STuav,Pri));
+
+
+
+    claim_CN1(CN,Secret,Ruav);
+    claim_CN2(CN,Secret,Pri);
+    claim_CN3(CN,Niagree);
+    claim_CN4(CN,Nisynch);
+    claim_CN5(CN,Alive);
+}
+
+
+
+//==================================================
+// UAV
+//==================================================
+
+role UAV
+{
+    const TIDuav : Nonce;
+
+    const Cuav : Nonce;
+    const Ruav : Nonce;
+
+    const Pubi,Pri : Nonce;
+
+    const x3,x4 : Nonce;
+
+    const Datai : Nonce;
+
+    const STuav : Nonce;
+
+    var STca : Nonce;
+
+
+
+    // Receive M2
+
+    macro Sign2UAV =
+        H(TIDuav,Pri,STca,Cuav);
+
+    read_2(CN,UAV,
+        (Cuav,Pubi,STca,Sign2UAV));
+
+
+
+    // Create M3
+
+    macro U1 =
+        XOR(Ruav,((x3,STuav),x4));
+
+    macro U2 =
+        XOR(x3,
+            XOR((Ruav,Cuav),x4));
+
+    macro U3 =
+        H(TIDuav,STuav,Pri,x3,Datai);
+
+    macro Sign3 =
+        H(Cuav,Ruav,Ruav,
+          TIDuav,
+          STuav,
+          Pubi,
+          x3);
+
+    send_3(UAV,CN,
+        (U1,U2,U3,
+         Sign3,TIDuav,STuav));
+
+
+
+    // Final verification
+
+    read_5(CN,UAV,
+        H(TIDuav,STuav,Pri));
+
+
+
+    claim_UAV1(UAV,Secret,Ruav);
+    claim_UAV2(UAV,Secret,Pri);
+    claim_UAV3(UAV,Niagree);
+    claim_UAV4(UAV,Nisynch);
+    claim_UAV5(UAV,Alive);
+}
+
+}
